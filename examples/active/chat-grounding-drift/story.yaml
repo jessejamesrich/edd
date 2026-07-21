@@ -1,0 +1,42 @@
+name: Chat Grounding Drift
+status: active
+priority: p1
+created: 2026-01-14T00:00:00Z
+emerged_from: retrieval-recall-floor
+
+problem: >
+  The assistant answers confidently from parametric knowledge instead of the
+  retrieved passages. On ~1 in 4 questions it states facts that aren't in the
+  context window, and when the context contradicts its priors it sides with the
+  priors. Users notice: "it made that up."
+
+theory: >
+  Two suspects, ordered by likelihood. (1) The system prompt asks the model to
+  "use the provided context" but never forbids outside knowledge, so the model
+  treats retrieval as optional flavor. (2) Retrieval recall is fine (fixed in
+  retrieval-recall-floor) but the passages land LAST in the prompt, after a long
+  instruction block, so they're under-weighted. Test H1 first — it's a one-line
+  prompt change and cheap to disprove.
+
+refs:
+  - branch: fix/grounding-drift
+  - prompts/chat-system.txt
+  - src/chat/assemble_context.py
+
+fixture: |
+  evals/grounding/run.py evals/grounding/contradiction-set.jsonl
+  # 40 questions where the retrieved passage contradicts a common prior.
+  # Score = fraction answered from the passage, not the prior.
+
+model_config:
+  thinking: low
+  tasks:
+    chat.answer: sonnet
+
+success_criteria: >
+  Contradiction-set grounding score ≥ 0.9 (baseline 0.74) with no regression on
+  the plain-QA set (currently 0.96).
+
+runs:
+  - 2026-01-14T09:20 FAIL contradiction-set # baseline 0.74 — confirms the drift, 10/40 sided with prior
+  - 2026-01-14T11:05 FAIL contradiction-set # H1 prompt "answer ONLY from context" → 0.83, better but 7 still drift

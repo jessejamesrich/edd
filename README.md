@@ -1,0 +1,291 @@
+# Evaluation-Driven Development (EDD)
+
+A lightweight methodology for building **non-deterministic systems** — AI
+generation, retrieval, agents, classifiers — where "quality" is a spectrum, not
+a boolean. Based on the scientific method: **observe, annotate, hypothesize,
+experiment, measure.**
+
+EDD is **context as files.** Every investigation lives as a small YAML document
+in your repo, versioned alongside the code. The primary reader isn't a
+dashboard — it's the **next agent (or human) to pick up the work.** They read
+the story and know exactly where things stand without digging through hundreds
+of lines of chat history or scrollback.
+
+> **Pairs with [ghostbus](https://github.com/jessejamesrich/ghostbus).**
+> ghostbus is the *live wire* — a tmux-backed bus for real-time coordination
+> between multiple local coding agents. EDD is the *durable record* — the
+> file-based memory that outlives any single session. Bus for now, files for
+> memory. Neither depends on the other; they just compose well.
+
+## Why
+
+Traditional tests say pass/fail. That's the right tool for deterministic code:
+a function returns the wrong bucket → fix → test → done.
+
+But when you're tuning a generator, a retrieval pipeline, or an agent, the
+output is non-deterministic and quality is a gradient. "Did it pass?" is the
+wrong question. The right questions are **how good, why, and what changed since
+last time?** A green checkmark can't hold a hypothesis, a run history, or the
+reason you tried the thing you tried.
+
+EDD gives that state a home: a mutable **story** that names the problem, holds
+the current theory, and accumulates an append-only list of **runs**. It's
+deliberately low-ceremony — plain YAML, plain directories, greppable, no
+service to stand up.
+
+## Concepts
+
+### Story
+
+A mutable working document that names the problem, holds the current theory,
+and lists runs. The story is the entry point to ongoing work.
+
+- Active stories live in `.edd/active/<slug>/story.yaml`
+- Parked (backlog / blocked) stories live in `.edd/parked/<slug>/story.yaml`
+- Resolved stories live in `.edd/archived/<slug>/story.yaml`
+
+A story has:
+
+- **name** — human-readable title
+- **status** — one of `active`, `backlog`, `blocked`, `resolved`
+- **problem** — what's wrong, in 1–3 sentences
+- **theory** — current hypothesis about *why*, and what fix to try
+- **refs** — loose association to branches, commits, docs
+- **fixture** — how to reproduce / test (a command, a file reference, or a
+  description)
+- **runs** — append-only list of results, one line each
+
+Common optional fields:
+
+- **priority** — `p0` (do now), `p1` (do next), `p2` (do soon), `p3` (backlog)
+- **depends_on** — story that should resolve before this one starts
+- **blocked_by** — the immediate blocker while `status: blocked`
+- **emerged_from** — the previous story that exposed this new failure mode
+- **continues** / **continued_by** — forward chain to the next story
+- **success_criteria** — measurable conditions for resolving the story
+- **notes** — short current-truth context that doesn't belong in run history
+- **model_config** — for stories that investigate LLM behavior: record the
+  task → model mapping and thinking level, so future runs compare against a
+  known configuration
+
+The story is mutable. The theory can change as you learn. The problem can
+sharpen. Refs accumulate. That's fine — **the story is current truth, not
+history.** (History lives in `runs`.)
+
+#### Canonical status meanings
+
+- `active` — open and intended for current / near-current execution.
+- `backlog` — valid work, but intentionally not open right now.
+- `blocked` — open only after the listed blocker resolves.
+- `resolved` — closed; no longer part of the open queue. After marking a story
+  `resolved`, move its whole directory to `.edd/archived/<slug>/`.
+
+Do **not** use `in_progress`, `stage-a-landed`, `completed`, or other custom
+workflow labels as `status`. Capture phase progress in fields like
+`stage_status`, `tasks`, `runs`, or `notes`, and keep `status` canonical. This
+keeps the "what's open?" query trivial and stable.
+
+Keep `.edd/active` small — only stories an agent may reasonably pick up *now*.
+Move `backlog` and `blocked` stories to `.edd/parked`.
+
+### Run
+
+A one-line entry in the story's `runs` list:
+
+```
+- YYYY-MM-DDTHH:MM PASS|FAIL <id> # terse signal
+```
+
+Runs are **append-only. Never edit or delete a run entry.** The run list *is*
+the regression history. A hypothesis that turned out wrong isn't a mistake to
+erase — it's a data point the next run builds on.
+
+### Run detail file (optional)
+
+When a run needs deeper analysis, create an immutable run file:
+
+```
+.edd/active/<slug>/runs/YYYY-MM-DD-<id>.yaml
+```
+
+Most runs don't need one — the one-liner in the story is enough. Only expand
+when the diagnosis matters for future reference:
+
+```yaml
+id: <run-id>
+date: YYYY-MM-DDTHH:MM
+commit: <sha>
+result: pass|fail
+failed_at: <stage-name>          # which stage of your pipeline broke
+
+observe:
+  quality_score: 88              # whatever signal you measure
+  <metric>: <value>
+
+annotate: >
+  What actually happened, in one or two sentences.
+
+hypothesize: >
+  Why you think it happened, and what layer owns the fix.
+
+fix_targets:
+  - path/to/the/file/you/think/is/responsible
+```
+
+Never edit a run file after creation. If the hypothesis was wrong, that shows
+up in the next run — and that's useful information, not a mistake.
+
+## Story lifecycle
+
+A story resolves when its hypothesis is confirmed — **even if the fix creates
+new problems.** New problems caused by a successful fix are *new stories*.
+
+At each run, ask: **did my fix work for what it was supposed to fix?**
+
+- **Yes, but something else broke** → resolve this story, create a new one with
+  `emerged_from` pointing back.
+- **No, my hypothesis was wrong** → update the theory, keep going.
+- **Partially** → update the theory, keep going.
+
+The `emerged_from` field links the causal chain:
+
+```
+copy-architecture          status: resolved
+  └→ adjacent-surfaces     status: resolved, emerged_from: copy-architecture
+      └→ base-copy-leak     status: active,   emerged_from: adjacent-surfaces
+```
+
+An agent reads the active story and follows `emerged_from` backwards *only if*
+it needs to understand how we got here. Usually it won't — the active story's
+problem and theory are self-contained.
+
+### Story vs. run annotation
+
+Stories are for **recurring failure modes or hypotheses.** Symptoms and one-off
+bugs are run annotations.
+
+| Signal                                          | Story or annotation?                        |
+| ----------------------------------------------- | ------------------------------------------- |
+| Section-heading ownership leaks across stages   | **Story** — recurring failure mode          |
+| Intent keeps drifting into the wrong content    | **Story** — recurring hypothesis            |
+| Duplicate header on output X                    | Annotation — a symptom in a run             |
+| One block failed to render                      | Annotation — a symptom in a run             |
+| Upstream 429 timeout                            | Annotation — infra noise (unless it recurs) |
+
+If you're not sure, start with a run annotation. If it recurs across 3+ runs,
+promote it to a story.
+
+## The loop
+
+1. **Create a story** when you start investigating a problem.
+2. **Run the fixture** — whatever reproduces the behavior (a script, an eval, a
+   manual call).
+3. **Observe** — read the output, scores, logs.
+4. **Annotate** — what failed, and where? Add a run line to the story.
+5. **Hypothesize** — update the `theory`. What's wrong, and what layer owns the
+   fix?
+6. **Experiment** — make the code / prompt change.
+7. **Measure** — run the fixture again. Add another run line.
+8. **Repeat** until the story reaches `status: resolved`.
+
+## Multi-phase stories (ports, migrations, planned restorations)
+
+Some stories aren't one observe→measure cycle — they're an N-phase,
+dependency-ordered execution plan (port a large module to another language,
+migrate a service, restore a broken pipeline). For these, runs aren't
+observations — they're **execution steps**, each landing one phase.
+
+The rule, non-negotiable: **commit the EDD update in the same turn the phase
+lands.** Concretely, the per-phase loop is:
+
+1. Write / edit the code for phase N.
+2. `git commit` the code change (`feat(scope): phase N/M — <description>`).
+3. Immediately, in the same turn:
+   - Append a one-line `runs:` entry with the phase SHA + a terse description of
+     what landed and what's stubbed.
+   - Remove the entry from `phases_remaining:` (or your remaining-work list).
+   - `git commit` the EDD change as a separate `docs(edd): backfill phase-N SHA`
+     commit.
+
+Only then move to phase N+1.
+
+**Why two commits per phase** instead of one squashed commit: the EDD entry
+references the phase SHA, but that SHA only exists *after* the phase commit
+lands. Bundling them by amending produces a SHA-chase cycle — every amend
+changes the SHA the EDD references, forcing another amend. Two commits is
+annoying once and stable forever.
+
+**Failure mode to watch for:** batching several phases' worth of EDD updates at
+the end "for speed" produces a sound `runs:` list but a broken audit trail in
+git. The phase commit and its EDD-update commit should sit next to each other in
+`git log --oneline`. If phase N's EDD update is adjacent to phase N+3's code
+commit, the discipline broke.
+
+## When to use EDD
+
+**Good fit:**
+
+- AI / ML system tuning — generation, retrieval, agents, classifiers, embeddings
+- Non-deterministic output that needs iterative quality improvement
+- Problems where the diagnosis isn't obvious upfront and the fix is a hypothesis
+
+**Not needed:**
+
+- Deterministic bugs (wrong bucket → fix → test → done)
+- CRUD routes, UI components, infrastructure
+- Anything where a unit test is the complete verification
+
+EDD **sits above** your existing design docs, specs, and prompts — it doesn't
+replace them. A story says "we're investigating X" and points at the relevant
+contract / prompt / code. Those artifacts stay the source of truth for *how the
+system works*; stories track *what we're trying to change and whether it's
+working.*
+
+## Finding active work
+
+To see what's open, sorted by priority:
+
+```bash
+for f in .edd/active/*/story.yaml; do
+  slug=$(basename "$(dirname "$f")")
+  st=$(grep "^status:" "$f" | head -1 | sed 's/status: //')
+  pri=$(grep "^priority:" "$f" | head -1 | sed 's/priority: //' || echo "p3")
+  { [ "$st" = "active" ] || [ "$st" = "blocked" ]; } && echo "$pri  $st  $slug"
+done | sort
+```
+
+Backlog, resolved, and causal chains:
+
+```bash
+grep -rl "status: backlog" .edd/parked/*/story.yaml     # backlog
+grep -rl "status: resolved" .edd/archived/*/story.yaml  # resolved
+grep -R "emerged_from" .edd/active .edd/parked .edd/archived  # trace a chain
+```
+
+## Layout
+
+```
+.edd/
+  active/                 # open, pick-up-now stories
+    <slug>/
+      story.yaml
+      runs/               # optional immutable run detail files
+  parked/                 # backlog + blocked
+    <slug>/story.yaml
+  archived/               # resolved
+    <slug>/story.yaml
+```
+
+This repo ships:
+
+- **[`examples/`](examples/)** — sanitized stories showing the shape: an active
+  investigation and a resolved chain with run history.
+- **[`tools/story.md`](tools/story.md)** — a scaffold prompt for creating a new
+  story (drop it in as a slash command / agent command).
+- **[`tools/edd-validate.py`](tools/edd-validate.py)** — a dependency-light
+  validator: checks required fields, canonical `status`, priority format, and
+  that `runs` is append-only YAML. Wire it into a pre-commit hook.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

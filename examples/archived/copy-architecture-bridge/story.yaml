@@ -1,0 +1,52 @@
+name: Copy Architecture Bridge
+status: resolved
+priority: p1
+created: 2026-01-02T00:00:00Z
+updated: 2026-01-09T00:00:00Z
+
+problem: >
+  Generated landing pages read as a pile of disconnected sections. Each section
+  is individually fine, but they repeat the same opening move ("In today's
+  world…"), never reference each other, and the page has no throughline. Reviewers
+  called it "listy" and "written by a committee."
+
+theory: >
+  RESOLVED root cause: sections were generated fully in parallel with no shared
+  plan. Each section-writer saw only its own brief, so it re-established context
+  from scratch every time (hence the repeated openers) and couldn't hand off to
+  the next section. The fix was a cheap upstream "copy architecture" pass that
+  plans the page's throughline — one sentence per section describing what it does
+  and how it bridges from the previous — before any section is written. Section
+  writers then receive their neighbors' bridge lines as context.
+
+  Rejected en route: raising per-section temperature (made it more listy, not
+  less) and a post-hoc "smooth the transitions" rewrite pass (expensive, and it
+  papered over the structural gap instead of closing it).
+
+refs:
+  - branch: fix/copy-architecture
+  - commit: a1b2c3d — copy-architecture planning pass
+  - prompts/plan-throughline.txt
+  - src/generate/plan.py
+  - src/generate/section.py
+
+fixture: |
+  evals/pages/run.py evals/pages/throughline-set.jsonl
+  # 12 page briefs. Scored on: repeated-opener count (want 0), cross-section
+  # references (want ≥ 3), and a holistic 1-5 "reads as one page" rating.
+
+success_criteria: >
+  Zero repeated openers, ≥ 3 cross-section references, holistic rating ≥ 4.0
+  across the throughline set.
+
+notes: >
+  The planning pass is ~300 tokens and runs once per page — negligible cost next
+  to the section fan-out. Keep it BEFORE section generation; a version that ran
+  it in parallel with the sections (to save latency) defeated the point.
+
+runs:
+  - 2026-01-02T14:10 FAIL throughline-set # baseline: 9/12 pages had repeated openers, 0.3 cross-refs avg, rating 2.8
+  - 2026-01-05T10:40 FAIL throughline-set # v1 plan pass, but sections ignored the bridge lines — rating 3.1, still listy
+  - 2026-01-07T16:22 FAIL throughline-set # bridge lines now injected into section briefs — rating 3.7, openers down to 2/12
+  - 2026-01-09T11:15 PASS throughline-set # 0 repeated openers, 3.4 cross-refs avg, rating 4.3 — resolves
+  - 2026-01-09T11:40 NOTE throughline-set # new failure mode spotted → emerged: base-copy-leak (base voice bleeds into branded pages)
