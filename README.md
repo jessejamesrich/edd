@@ -386,10 +386,26 @@ grep -R "emerged_from" .edd/active .edd/parked .edd/archived  # trace a chain
 
 This repo ships:
 
-- **[`examples/`](examples/)** — sanitized stories showing the shape: an active
-  investigation and a resolved chain with run history.
+- **[`examples/`](examples/)** — 21 synthetic stories, enough to show the whole
+  vocabulary in use rather than one of each. Six active, two parked, thirteen
+  closed: ten `resolved`, two `rejected` (work examined and deliberately not
+  done, which is the word most archives are missing), and one `superseded`
+  whose body names where the question went. Two causal chains run end to end —
+  `retrieval-recall-floor` to `chat-grounding-drift`, and
+  `copy-architecture-bridge` to `adjacent-surfaces` to `base-copy-leak` — so
+  `emerged_from` can be read forwards and backwards.
+  `port-the-pipeline-to-typescript` is a six-phase story whose runs are
+  execution steps naming the commit that landed each one.
+  `a-cache-key-ignores-the-locale` carries a run detail file.
+  `classifier-drifts-after-retraining` carries `model_config`. None of them is
+  real; the problems are the ordinary ones.
 - **[`tools/story.md`](tools/story.md)** — a scaffold prompt for creating a new
   story (drop it in as a slash command / agent command).
+- **[`skills/writing-an-edd-run/`](skills/writing-an-edd-run/)** — the
+  procedure for the two operations that happen most, appending a run and
+  closing a story, as a skill an agent loads when it needs it. The README tells
+  you what a run is; this tells you how to write one without destroying the one
+  below it. Drop it in wherever your agent reads skills.
 - **[`tools/edd-validate.py`](tools/edd-validate.py)** — a dependency-light
   validator: every story parses, `status` is one of the five, the status agrees
   with the directory, and — against git — **no run entry that existed at HEAD

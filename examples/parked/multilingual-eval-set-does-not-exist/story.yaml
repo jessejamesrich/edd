@@ -1,0 +1,27 @@
+name: There Is No Multilingual Eval Set
+status: parked
+priority: p3
+created: 2026-01-20
+
+problem: >
+  Every quality number in this repo is measured on English. Two locales ship
+  and neither has a rated set, so a regression in either is invisible until a
+  reader reports it.
+
+theory: >
+  Not a hypothesis yet, which is why this is parked rather than active. The
+  work is building the set, and the open question is whether translated English
+  questions are valid at all or whether native questions are required — a
+  translated set measures translation quality as much as answer quality.
+
+refs: []
+
+fixture: |
+  Does not exist. That is the story.
+
+runs:
+  - >
+    2026-01-20 PARKED ON PURPOSE, with the reason recorded so it does not get
+    reopened as a surprise. Building the set is perhaps a week of rating, and
+    nothing is visibly broken, so it waits. If a locale regression is ever
+    reported by a reader, this becomes p1 the same day.

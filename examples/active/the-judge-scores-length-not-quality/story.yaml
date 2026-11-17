@@ -1,0 +1,33 @@
+name: The Judge Scores Length, Not Quality
+status: active
+priority: p0
+created: 2026-02-02
+
+problem: >
+  The LLM judge that gates every release correlates 0.81 with answer length and
+  0.34 with human ratings. Three releases have now shipped on a score that went
+  up because answers got longer.
+
+theory: >
+  The rubric asks for thoroughness without bounding it, and the judge sees one
+  answer at a time with no reference, so length is the only signal of effort
+  available to it. Pairwise comparison against a fixed reference should break
+  the correlation. If it does not, the rubric is the problem rather than the
+  protocol.
+
+refs:
+  - doc: docs/eval-protocol.md
+
+fixture: |
+  eval/judge-agreement.py --human-set 300 --report-correlations
+
+runs:
+  - >
+    2026-02-02 THE CORRELATION IS THE WHOLE STORY. Over 300 human-rated
+    answers the judge agrees 0.34 with the humans and 0.81 with word count.
+    Padding an answer with a restatement of the question raises its score by a
+    mean of 0.6 points, which is a direct test rather than an inference.
+  - >
+    2026-02-04 AND THE HUMANS ARE NOT THE PROBLEM, checked before blaming the
+    model. Inter-rater agreement on the same 300 is 0.78, so there is a signal
+    to agree with.

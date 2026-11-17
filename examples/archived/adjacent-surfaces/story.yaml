@@ -1,0 +1,40 @@
+name: Adjacent Surfaces Repeat The Page
+status: resolved
+priority: p2
+created: 2026-01-09
+updated: 2026-01-15
+emerged_from: copy-architecture-bridge
+continued_by: base-copy-leak
+
+problem: >
+  The bridge-line pass fixed the body of a page and nothing else. The meta
+  description, the social card and the email teaser are each generated from the
+  same brief, so all three open with the page's first sentence and the reader
+  meets it four times before reading anything.
+
+theory: >
+  RESOLVED. The surfaces were never given a plan, only the brief. Passing the
+  page's bridge lines to the surface writers, plus one line naming what each
+  surface is FOR, was enough — a meta description summarising and a teaser
+  provoking are different jobs that the brief alone cannot distinguish.
+
+refs:
+  - branch: fix/surface-briefs
+
+fixture: |
+  eval/surfaces.py --pages 24 --compare-openers
+
+runs:
+  - >
+    2026-01-09 OPENED FROM THE PARENT'S LAST RUN. 22 of 24 pages open their
+    meta description with the body's first sentence verbatim, and 19 of 24 do
+    the same in the social card.
+  - >
+    2026-01-13 TELLING EACH SURFACE WHAT IT IS FOR did most of the work. Four
+    of 24 still repeat, all four being pages whose body opens with the only
+    concrete number on the page, which every surface then reaches for. Arguably
+    correct behaviour rather than a defect.
+  - >
+    2026-01-15 RESOLVED at 4 of 24, with the remaining four accepted. A new
+    failure mode showed up while measuring this: pages for branded tenants are
+    picking up the unbranded base voice. Opened as base-copy-leak.

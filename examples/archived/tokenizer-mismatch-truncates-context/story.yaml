@@ -1,0 +1,37 @@
+name: A Tokenizer Mismatch Truncates Context
+status: resolved
+priority: p0
+created: 2026-02-21
+updated: 2026-02-24
+
+problem: >
+  Long documents lose their last section. The context assembler counts tokens
+  to decide what fits, reports fitting comfortably, and the model behaves as
+  though the tail was never there.
+
+theory: >
+  RESOLVED. The assembler counted with a tokenizer for a different model
+  family, which undercounts this one by 12 to 18% on prose and far more on
+  code. So the budget said 90% full at 106% full, and the overflow was dropped
+  silently by the API rather than refused.
+
+refs:
+  - branch: fix/token-count
+  - doc: docs/context-assembly.md
+
+fixture: |
+  eval/context-budget.py --docs 80 --assert-tail-present
+
+runs:
+  - >
+    2026-02-21 THE TAIL IS MISSING IN 23 OF 80, and the 23 are the longest 23,
+    which rules out content and points at length.
+  - >
+    2026-02-22 THE TWO COUNTS DISAGREE BY 14% MEAN on the same 80 documents,
+    measured by counting each one both ways. On the three code-heavy documents
+    the gap is 31%.
+  - >
+    2026-02-24 RESOLVED by counting with the right tokenizer and refusing
+    rather than truncating when the budget is exceeded. 80 of 80 keep their
+    tail, and four documents now get a stated refusal instead of a silent
+    truncation, which is the better failure.

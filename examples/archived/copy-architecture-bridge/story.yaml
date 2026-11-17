@@ -45,11 +45,25 @@ notes: >
   it in parallel with the sections (to save latency) defeated the point.
 
 runs:
-  - 2026-01-02T14:10 FAIL throughline-set # baseline: 9/12 pages had repeated openers, 0.3 cross-refs avg, rating 2.8
-  - 2026-01-05T10:40 FAIL throughline-set # v1 plan pass, but sections ignored the bridge lines — rating 3.1, still listy
-  - 2026-01-07T16:22 FAIL throughline-set # bridge lines now injected into section briefs — rating 3.7, openers down to 2/12
-  - 2026-01-09T11:15 PASS throughline-set # 0 repeated openers, 3.4 cross-refs avg, rating 4.3 — resolves
-  - 2026-01-09T11:40 NOTE throughline-set # new failure mode spotted → emerged: base-copy-leak (base voice bleeds into branded pages)
+  - >
+    2026-01-02 BASELINE, and the shape of the failure is in the numbers rather
+    than in the complaint. 9 of 12 pages open two or more sections with the
+    same move, cross-references average 0.3 per page, rating 2.8.
+  - >
+    2026-01-05 THE PLAN EXISTED AND THE WRITERS IGNORED IT. A v1 upstream pass
+    produced bridge lines nothing consumed, so rating moved 2.8 to 3.1 and the
+    pages were still listy. Planning without delivery is not a fix.
+  - >
+    2026-01-07 DELIVERING THE BRIDGE LINES INTO EACH SECTION BRIEF is what
+    moved it. Rating 3.7, repeated openers down from 9 of 12 to 2 of 12.
+  - >
+    2026-01-09 PASS. Zero repeated openers, cross-references 0.3 to 3.4 per
+    page, rating 4.3. Raising per-section temperature had been tried first and
+    made it worse, which is the entry worth keeping.
+  - >
+    2026-01-09 AND A NEW FAILURE MODE WHILE MEASURING THIS ONE. Pages for
+    branded tenants pick up the unbranded base voice, which this fix neither
+    caused nor addresses. Opened as base-copy-leak rather than folded in here.
   - >
     2026-01-09 RESOLVED, AND THE CAUSE WAS ORDER RATHER THAN TEMPERATURE.
     Sections were written fully in parallel from their own briefs, so each one

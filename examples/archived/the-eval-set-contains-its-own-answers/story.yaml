@@ -1,0 +1,32 @@
+name: The Eval Set Contains Its Own Answers
+status: resolved
+priority: p0
+created: 2026-02-26
+updated: 2026-02-27
+
+problem: >
+  Retrieval scores 0.98 on the benchmark and users report misses daily. The gap
+  is too large to be sampling.
+
+theory: >
+  RESOLVED, and it is the most embarrassing kind of bug. The benchmark
+  questions were generated FROM the corpus chunks, one question per chunk, so
+  every question's answer is a verbatim chunk and retrieval is matching a
+  paraphrase of its own target. Real questions do not look like that.
+
+refs: []
+
+fixture: |
+  eval/recall.py --set human-written-90 --k 10
+
+runs:
+  - >
+    2026-02-26 0.98 AGAINST 0.71, which is the whole finding. 90 questions
+    written by hand from reading the product, not from reading the corpus,
+    score 0.71 where the generated set scores 0.98. The old set measured
+    whether an encoder can recognise a paraphrase of a sentence it was given.
+  - >
+    2026-02-27 RESOLVED by retiring the generated set rather than fixing it. A
+    contaminated benchmark cannot be repaired by adjusting the questions, and
+    keeping it alongside the honest one would only invite the better number to
+    be quoted.

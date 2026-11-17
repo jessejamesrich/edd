@@ -1,0 +1,50 @@
+name: Port The Pipeline To TypeScript
+status: resolved
+priority: p1
+created: 2026-03-02
+updated: 2026-03-19
+
+problem: >
+  The generation pipeline is 1800 lines of Python beside a TypeScript service
+  that calls it over HTTP. Two languages, two dependency trees and a network
+  hop for what is one call.
+
+theory: >
+  Not a hypothesis — a six-phase dependency-ordered port. Recorded as a story
+  because the runs are the audit trail, one per phase, each naming the commit
+  that landed it. The risk being managed is a half-ported pipeline where both
+  paths are live and neither is authoritative.
+
+refs:
+  - branch: port/pipeline-ts
+
+fixture: |
+  eval/parity.py --arms python,typescript --n 200
+
+phases_remaining: []
+
+runs:
+  - >
+    2026-03-04 PHASE 1/6, 9a1c4f2 — types and the parity harness, no behaviour.
+    The harness runs both arms on the same 200 inputs and diffs structurally,
+    which is what every later phase is measured against. 200 of 200 identical,
+    trivially, since nothing is ported yet. That is the control.
+  - >
+    2026-03-07 PHASE 2/6, 3b77e01 — retrieval ported. 200 of 200 parity. The
+    Python path stays live and authoritative; TypeScript runs shadowed.
+  - >
+    2026-03-10 PHASE 3/6, c04dd19 — ranking ported, and the first real
+    divergence. 6 of 200 differ, all six being ties broken in a different
+    order. Sorting made stable by document id rather than by score alone;
+    200 of 200 after.
+  - >
+    2026-03-13 PHASE 4/6, 51e9ab8 — assembly ported, with the token count
+    taken from the other story's fix rather than reimplemented. 200 of 200.
+  - >
+    2026-03-16 PHASE 5/6, 7fd2206 — generation ported. Parity is not
+    byte-exact here and cannot be, so the harness asserts structure and
+    groundedness rather than text. 200 of 200 on both.
+  - >
+    2026-03-19 PHASE 6/6, e8c0a44 — the Python path and the HTTP hop deleted,
+    which is the phase that makes the port real. Nothing additive left beside
+    the live path. Median latency down 310ms with the hop gone. RESOLVED.

@@ -1,0 +1,32 @@
+name: The Prompt Cache Never Hits
+status: resolved
+priority: p1
+created: 2026-02-05
+updated: 2026-02-06
+
+problem: >
+  Caching was enabled a month ago and the bill did not move. The hit rate
+  reported by the provider is 0.3%.
+
+theory: >
+  RESOLVED in a day, and the cause is the kind that hides in plain sight. The
+  system prompt ended with a timestamp, so the cacheable prefix differed on
+  every single call. Everything upstream of it was identical and none of it
+  could be reused.
+
+refs:
+  - branch: fix/cache-prefix
+
+fixture: |
+  eval/cache.py --n 500 --report-hit-rate
+
+runs:
+  - >
+    2026-02-05 A TIMESTAMP IN THE PREFIX, found by diffing two consecutive
+    request bodies rather than by reading the cache docs again. One line
+    differed and it was the last line before the cacheable boundary.
+  - >
+    2026-02-06 RESOLVED. Timestamp moved after the boundary, hit rate 0.3% to
+    91%, cost per call down 64%. The lesson kept for next time is that the
+    instrument was a diff of two real requests, and a month of reading
+    documentation had not found it.

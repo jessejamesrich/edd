@@ -38,5 +38,12 @@ success_criteria: >
   the plain-QA set (currently 0.96).
 
 runs:
-  - 2026-01-14T09:20 FAIL contradiction-set # baseline 0.74 — confirms the drift, 10/40 sided with prior
-  - 2026-01-14T11:05 FAIL contradiction-set # H1 prompt "answer ONLY from context" → 0.83, better but 7 still drift
+  - >
+    2026-01-14 BASELINE 0.74 ON contradiction-set, which confirms the drift
+    rather than merely suggesting it — 10 of 40 answers sided with the model's
+    prior against a context that said otherwise.
+  - >
+    2026-01-14 H1 TESTED FIRST BECAUSE IT WAS ONE LINE. Forbidding outside
+    knowledge outright, "answer ONLY from the provided context", moves 0.74 to
+    0.83. Better and not enough; 7 of 40 still drift, so the instruction is
+    not the whole cause and H2 is still open.

@@ -1,0 +1,27 @@
+name: A Cache Key Ignores The Locale
+status: resolved
+priority: p0
+created: 2026-03-21
+updated: 2026-03-21
+
+problem: >
+  French readers are served English answers at random. Not translated badly —
+  the wrong language entirely, and only sometimes.
+
+theory: >
+  RESOLVED the same day. The answer cache keyed on the question and the corpus
+  version and not on the locale, so whichever language asked first won the
+  entry for everyone. Intermittent because it depended on who asked first.
+
+refs:
+  - branch: fix/cache-key-locale
+
+fixture: |
+  eval/locale-cache.py --locales en,fr --interleave
+
+runs:
+  - >
+    2026-03-21 REPRODUCED BY ORDERING RATHER THAN BY LOAD. Asking in French
+    first serves French to English readers, which is the same bug wearing the
+    other language and rules out any translation stage. Locale added to the
+    key, 200 interleaved requests, 200 correct. Shipped as a hotfix.

@@ -1,0 +1,36 @@
+name: Answer Quality Is One Number
+status: superseded
+priority: p1
+created: 2026-01-18
+updated: 2026-02-03
+
+problem: >
+  A single quality score gates releases, and it cannot say what got worse. Two
+  releases passed while groundedness fell, because verbosity rose at the same
+  time and the mean held.
+
+theory: >
+  SUPERSEDED by the-judge-scores-length-not-quality, which names the real
+  mechanism. The theory here was that one number hides movement in its parts,
+  which is true and insufficient — splitting the score into groundedness,
+  relevance and voice was begun and then made moot, because the judge
+  producing all three correlates with length rather than with any of them.
+  Fix the instrument first; the decomposition is only worth having once each
+  part means something.
+
+refs:
+  - doc: docs/eval-protocol.md
+
+fixture: |
+  eval/judge-agreement.py --human-set 300
+
+runs:
+  - >
+    2026-01-22 THE PARTS MOVE IN OPPOSITE DIRECTIONS under a flat mean, which
+    is the case for splitting. Groundedness 4.3 to 3.8 while verbosity rose
+    enough to hold the total at 4.1.
+  - >
+    2026-02-03 SUPERSEDED. Decomposing a score produced by an instrument that
+    measures length gives three numbers that all measure length. The question
+    moved to the-judge-scores-length-not-quality and this story is closed
+    without the decomposition being finished.

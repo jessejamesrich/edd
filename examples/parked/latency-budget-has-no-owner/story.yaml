@@ -1,0 +1,26 @@
+name: The Latency Budget Has No Owner
+status: parked
+priority: p3
+created: 2026-02-09
+
+problem: >
+  p95 end to end is 4.2 seconds and nobody can say what it should be. Each
+  stage is defended individually as reasonable, and the total is nobody's
+  number, so no stage is ever asked to give any of it back.
+
+theory: >
+  Suspected to be an organisational problem wearing a performance costume. A
+  budget per stage, summing to a stated total, would make the trade explicit.
+  Parked because the fix is a decision rather than a change.
+
+refs: []
+
+fixture: |
+  eval/latency.py --breakdown-by-stage --percentiles 50,95,99
+
+runs:
+  - >
+    2026-02-09 THE BREAKDOWN, so the conversation has numbers when it happens.
+    Retrieval 310ms, rerank 890ms, generation 2.6s, surfaces 400ms at p95. The
+    rerank pass is the one nobody has justified against what it buys, which is
+    now its own story.

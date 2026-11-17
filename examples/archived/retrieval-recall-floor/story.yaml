@@ -1,0 +1,57 @@
+name: Retrieval Recall Floor
+status: resolved
+priority: p1
+created: 2026-01-03
+updated: 2026-01-12
+continued_by: chat-grounding-drift
+
+problem: >
+  Questions whose answer is definitely in the corpus come back unanswered. Spot
+  checks put recall somewhere near 60%, which makes every downstream quality
+  question unanswerable — you cannot tune an answer the model never saw the
+  passage for.
+
+theory: >
+  RESOLVED. Chunking was the floor, not the embedding model and not the index.
+  Chunks were split at a fixed character count with no overlap, so a fact
+  stated across a paragraph boundary existed in neither chunk. Overlap plus
+  splitting on structure rather than length took recall@10 from 0.61 to 0.94.
+  Three things were tried first and are recorded in the runs because they were
+  plausible and wrong.
+
+refs:
+  - branch: fix/chunking-overlap
+  - doc: docs/retrieval.md
+
+fixture: |
+  eval/recall.py --set known-answer-120 --k 10
+
+runs:
+  - >
+    2026-01-03 BASELINE, and the number was worse than the spot checks said.
+    recall@10 is 0.61 over the 120-question set, and the misses are not random
+    — 71 of 47 failures are questions whose answer spans a paragraph break.
+    That pattern is the whole finding; everything below is testing it.
+  - >
+    2026-01-05 A BIGGER EMBEDDING MODEL BOUGHT ALMOST NOTHING. 0.61 to 0.64 at
+    three times the cost per document. Recorded because it was the obvious
+    first move and it is the one most people try — if the passage is not in a
+    chunk, no encoder can retrieve it.
+  - >
+    2026-01-06 NOR DID RAISING k. recall@50 is 0.78, which sounds like progress
+    until you notice the generator only reads the top 8. Retrieval metrics that
+    ignore what the next stage consumes measure nothing.
+  - >
+    2026-01-08 HNSW WAS INNOCENT, tested by swapping it for exact search. 0.61
+    both ways on the same set, so the index returns what it is asked for and
+    the question is what it was asked.
+  - >
+    2026-01-11 128-TOKEN OVERLAP AND STRUCTURE-AWARE SPLITTING, which is the
+    fix. recall@10 is 0.94, the paragraph-boundary failures drop from 47 to 3,
+    and the three that remain are tables rendered as prose. Index size grew 18%
+    and query latency did not move.
+  - >
+    2026-01-12 RESOLVED, and it exposed the next problem rather than closing
+    the subject. With the passages actually present, the generator still
+    answers from parametric knowledge about a quarter of the time, which is not
+    a retrieval failure and needs its own story. Opened as chat-grounding-drift.

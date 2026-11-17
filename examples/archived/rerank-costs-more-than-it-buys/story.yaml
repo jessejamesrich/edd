@@ -1,0 +1,32 @@
+name: The Rerank Pass Costs More Than It Buys
+status: rejected
+priority: p2
+created: 2026-02-10
+updated: 2026-02-14
+
+problem: >
+  Reranking adds 890ms at p95 and the proposal was to drop it. The question is
+  whether answer quality survives without it.
+
+theory: >
+  REJECTED, and deliberately so. The pass was expected to be redundant once
+  chunking was fixed. It is not — removing it costs 7 points of human-rated
+  answer quality on the 300-question set, which is far more than 890ms is
+  worth. The latency has to come from somewhere else.
+
+refs:
+  - doc: docs/eval-protocol.md
+
+fixture: |
+  eval/judge-agreement.py --human-set 300 --arm no-rerank
+
+runs:
+  - >
+    2026-02-12 THE ARM WITHOUT RERANK IS CLEARLY WORSE. Human rating falls from
+    4.1 to 3.4 over 300 questions and the failure mode is specific — the right
+    passage is retrieved and ranked ninth, so the generator never reads it.
+  - >
+    2026-02-14 REJECTED RATHER THAN RESOLVED, because the work was examined and
+    deliberately not done. Nothing was built and nothing was fixed; calling
+    this resolved would claim a change that never happened. The latency story
+    stays open and now knows one place it cannot save.

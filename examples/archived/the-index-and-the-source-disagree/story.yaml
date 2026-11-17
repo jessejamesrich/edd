@@ -1,0 +1,39 @@
+name: The Index And The Source Disagree
+status: resolved
+priority: p1
+created: 2026-03-24
+updated: 2026-03-26
+
+problem: >
+  Deleted documents keep being cited. The source of truth no longer holds them
+  and the vector index still answers with them, so the product quotes material
+  that was withdrawn on purpose.
+
+theory: >
+  RESOLVED. Deletion wrote to the database and enqueued an index delete, and
+  the queue consumer treated a missing document as success — so a delete that
+  arrived before its own document finished indexing was acknowledged and
+  dropped, and the document was indexed afterwards with nothing left to remove
+  it.
+
+refs:
+  - branch: fix/index-delete-ordering
+
+fixture: |
+  eval/index-parity.py --assert-no-orphans
+
+runs:
+  - >
+    2026-03-24 1,188 ORPHANS, counted by diffing the index against the table
+    rather than sampling. The oldest is four months old, so this has been true
+    for most of the index's life.
+  - >
+    2026-03-25 THE ORDERING IS THE CAUSE, reproduced deliberately by deleting a
+    document mid-index. The delete acknowledges against nothing and the index
+    write lands after it. Measured, not inferred, because a queue that
+    acknowledges absence looks identical to a queue that worked.
+  - >
+    2026-03-26 RESOLVED. A delete for an unknown document is now a retry with
+    a deadline rather than a success, the backfill removed all 1,188 orphans,
+    and a parity assertion runs nightly so the next drift is reported rather
+    than discovered.

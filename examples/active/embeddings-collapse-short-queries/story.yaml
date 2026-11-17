@@ -1,0 +1,27 @@
+name: Embeddings Collapse Short Queries
+status: active
+priority: p2
+created: 2026-03-01
+
+problem: >
+  One and two word queries retrieve almost the same documents regardless of the
+  words. "billing" and "latency" return six of the same top ten, which no
+  reader would call related.
+
+theory: >
+  Short inputs land near the centroid of the embedding space, so cosine
+  distance between any two of them is small compared with the distance to any
+  document. Expanding the query before encoding should separate them. Unclear
+  whether expansion or a different pooling strategy is the better answer.
+
+refs:
+  - doc: docs/retrieval.md
+
+fixture: |
+  eval/short-queries.py --terms 60 --overlap-report
+
+runs:
+  - >
+    2026-03-01 MEASURED THE COLLAPSE RATHER THAN ASSUMING IT. Mean pairwise
+    cosine distance between 60 single-word queries is 0.08; between 60 sentence
+    queries it is 0.41. The space really does fold short inputs together.

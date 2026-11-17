@@ -1,0 +1,26 @@
+name: Streaming Truncates The Last Sentence
+status: active
+priority: p1
+created: 2026-02-25
+
+problem: >
+  About one response in forty ends mid-word in the UI. The stored transcript is
+  complete, so nothing is lost — but the reader sees a cut-off answer and the
+  logs show a clean finish, which is why this went unreported for weeks.
+
+theory: >
+  The client closes the stream on the finish event without draining the buffer
+  behind it. That would make the loss proportional to the final chunk size
+  rather than random, which is testable by forcing a large final chunk.
+
+refs: []
+
+fixture: |
+  eval/stream-integrity.py --n 400 --compare-stored
+
+runs:
+  - >
+    2026-02-25 IT IS NOT RANDOM. 11 of 400 responses truncate, and all 11 have
+    a final chunk over 180 characters while the mean is 34. Forcing a 400-
+    character final chunk truncates 38 of 40, which is the theory confirmed by
+    changing the variable rather than by observing it.

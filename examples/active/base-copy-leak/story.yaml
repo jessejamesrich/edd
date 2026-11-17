@@ -1,0 +1,34 @@
+name: Base Copy Leaks Into Branded Pages
+status: active
+priority: p1
+created: 2026-01-15
+emerged_from: adjacent-surfaces
+
+problem: >
+  Pages generated for a tenant with its own voice guide read like the default
+  voice. The guide is loaded, the prompt contains it, and the output ignores
+  it — about a third of sections sound unbranded, and reviewers on two tenants
+  have called it out independently.
+
+theory: >
+  Two suspects. (1) The voice guide is injected per PAGE but sections are
+  written per SECTION, so a long page's later sections sit far enough from the
+  guide to be outweighed by the base examples that ship in the system prompt.
+  (2) The base examples are not marked as examples, so they read as voice.
+  Test H2 first — removing them is one line and costs nothing to undo.
+
+refs:
+  - branch: wip/voice-leak
+
+fixture: |
+  eval/voice.py --tenants acme,globex --sections 180
+
+runs:
+  - >
+    2026-01-15 BASELINE, 62 of 180 sections scored unbranded by the voice
+    rubric, and the distribution is the finding — section 1 of a page leaks 11%
+    of the time and section 9 leaks 54%. Position predicts it, which is H1.
+  - >
+    2026-01-16 H2 FIRST ANYWAY, because it was cheap. Removing the base
+    examples moved 62 to 58 and made two tenants worse, so they are not the
+    cause and they are doing some work. Put back.

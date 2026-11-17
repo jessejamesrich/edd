@@ -1,0 +1,41 @@
+name: The Classifier Drifts After Every Retrain
+status: resolved
+priority: p1
+created: 2026-01-28
+updated: 2026-02-08
+
+problem: >
+  Each monthly retrain moves the intent classifier's behaviour on inputs nobody
+  changed. Accuracy on the held-out set holds at 0.93 while routing decisions
+  flip for about 4% of live traffic, which users feel as the product changing
+  its mind.
+
+theory: >
+  RESOLVED. The held-out set was resampled from the same pool each month, so it
+  measured the new model against a new question set and could not see drift at
+  all. A frozen regression set pinned at a known date reports it immediately.
+
+model_config:
+  thinking: low
+  tasks:
+    classify.intent: small
+
+refs:
+  - doc: docs/retraining.md
+
+fixture: |
+  eval/intent.py --set frozen-2026-01 --compare-to previous
+
+runs:
+  - >
+    2026-01-28 THE EVAL SET WAS THE PROBLEM, not the model. Resampling it each
+    month means every retrain is graded on a different exam, so a stable 0.93
+    says nothing about stability.
+  - >
+    2026-02-03 A FROZEN SET SHOWS IT AT ONCE. Against frozen-2026-01 the new
+    model agrees with the old one on 95.8% of inputs, so the 4% is real and was
+    simply never measured.
+  - >
+    2026-02-08 RESOLVED. The frozen set gates the retrain now and a flip rate
+    over 2% blocks it. The month's retrain was blocked on the first run, which
+    is the check working rather than the check failing.

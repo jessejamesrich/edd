@@ -1,0 +1,24 @@
+id: locale-cache-repro
+date: 2026-03-21T09:40
+commit: 4c1e8ba
+result: fail
+failed_at: cache
+
+observe:
+  requests: 200
+  wrong_locale_served: 94
+  cache_key_fields: [question_hash, corpus_version]
+  locale_in_key: false
+
+annotate: >
+  Interleaving two locales against a cold cache serves the first-asked language
+  to both. 94 of 200 wrong, and the ratio tracks the interleave order exactly
+  rather than varying with load, which is what rules out a race.
+
+hypothesize: >
+  The key is built in buildAnswerKey and takes the question hash and the corpus
+  version. Locale is read later, when the answer is already resolved from the
+  cache, so it cannot affect the lookup.
+
+fix_targets:
+  - src/cache/buildAnswerKey.ts

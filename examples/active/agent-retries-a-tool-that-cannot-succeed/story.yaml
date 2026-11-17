@@ -1,0 +1,35 @@
+name: The Agent Retries A Tool That Cannot Succeed
+status: active
+priority: p1
+created: 2026-02-18
+
+problem: >
+  When a tool returns a permanent error — bad credentials, a deleted record —
+  the agent retries it, sometimes for a dozen turns, and bills the whole loop.
+  One session called the same failing endpoint 31 times before the turn limit
+  stopped it.
+
+theory: >
+  The tool result carries no distinction between retryable and terminal, so
+  every failure reads as noise worth another attempt. Returning a typed
+  outcome, and stating in the tool description that a terminal error must not
+  be retried, is the smaller half; the larger half is that the agent has no
+  memory of having already tried, because each turn sees only the last result.
+
+refs:
+  - branch: wip/terminal-errors
+
+fixture: |
+  eval/agent-loops.py --scenarios terminal-errors --turn-cap 20
+
+runs:
+  - >
+    2026-02-18 THIRTY-ONE CALLS, reproduced on the first try with a revoked
+    credential. The agent never varies the call, so it is not exploring — it is
+    retrying identically, which means the result is not telling it anything.
+  - >
+    2026-02-20 TYPING THE OUTCOME HALVED IT, not more. A terminal flag on the
+    result takes the median from 31 to 14 calls. The agent reads the flag and
+    stops retrying THAT tool, then tries a neighbouring one with the same
+    credential. Which is worth keeping as the finding: the flag fixed the call
+    and not the belief behind it.

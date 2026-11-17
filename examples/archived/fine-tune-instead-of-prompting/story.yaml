@@ -1,0 +1,33 @@
+name: Fine-Tune Instead Of Prompting
+status: rejected
+priority: p2
+created: 2026-01-26
+updated: 2026-02-01
+
+problem: >
+  Prompt engineering for voice adherence has eaten three weeks. The proposal
+  was to fine-tune on 2000 approved examples and delete most of the prompt.
+
+theory: >
+  REJECTED on cost of ownership rather than on quality. A trial run reached
+  voice adherence comparable to the best prompt, so the technique works. What
+  killed it is that every voice change then needs a retrain and a redeploy,
+  and voice changes weekly — the prompt is worse at the task and far better at
+  being edited by the person who owns the voice.
+
+refs: []
+
+fixture: |
+  eval/voice.py --arm tuned-v1 --tenants acme,globex
+
+runs:
+  - >
+    2026-01-30 THE TUNED MODEL IS ABOUT AS GOOD, which is what made the
+    decision hard. Voice adherence 0.88 against 0.86 for the best prompt, and
+    it needs 400 fewer tokens per call.
+  - >
+    2026-02-01 REJECTED ANYWAY, and the reason is worth keeping because the
+    numbers argued the other way. Voice is owned by a person who edits it
+    weekly. A retrain in that loop makes the owner wait on an engineer, and
+    two points of adherence does not buy that. Revisit if voice ever stops
+    changing.
