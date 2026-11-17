@@ -20,10 +20,10 @@ of lines of chat history or scrollback.
 ## In production
 
 edd runs a client data project at OMTM.ai: 99 stories and about 2,000 logged
-runs between September and November 2026, covering ingestion from nine vendor
+runs between September and November 2026, covering ingestion from ten source
 systems, a read-only access audit, dataset anonymization and a training proof
-of concept. Every finding the project reports carries an executable check that
-recomputes it from raw data.
+of concept. Numbers the project reports to the client are backed by executable
+checks that recompute them from raw data.
 
 ## Why
 
