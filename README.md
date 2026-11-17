@@ -17,6 +17,14 @@ of lines of chat history or scrollback.
 > file-based memory that outlives any single session. Bus for now, files for
 > memory. Neither depends on the other; they just compose well.
 
+## In production
+
+edd runs a client data project at OMTM.ai: 99 stories and about 2,000 logged
+runs between September and November 2026, covering ingestion from nine vendor
+systems, a read-only access audit, dataset anonymization and a training proof
+of concept. Every finding the project reports carries an executable check that
+recomputes it from raw data.
+
 ## Why
 
 Traditional tests say pass/fail. That's the right tool for deterministic code:
