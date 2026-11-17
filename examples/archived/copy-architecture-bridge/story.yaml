@@ -50,3 +50,13 @@ runs:
   - 2026-01-07T16:22 FAIL throughline-set # bridge lines now injected into section briefs — rating 3.7, openers down to 2/12
   - 2026-01-09T11:15 PASS throughline-set # 0 repeated openers, 3.4 cross-refs avg, rating 4.3 — resolves
   - 2026-01-09T11:40 NOTE throughline-set # new failure mode spotted → emerged: base-copy-leak (base voice bleeds into branded pages)
+  - >
+    2026-01-09 RESOLVED, AND THE CAUSE WAS ORDER RATHER THAN TEMPERATURE.
+    Sections were written fully in parallel from their own briefs, so each one
+    re-established context from scratch — that is where the repeated openers
+    came from, not from any single section being badly written. A cheap
+    upstream pass that plans one bridge line per section, handed to the section
+    writers as context, took repeated openers from 9 of 12 pages to 0 and
+    cross-references from 0.3 to 3.4 per page. Raising per-section temperature
+    was tried first and made it worse, which is the entry worth keeping; this
+    one is a folded scalar so none of those numbers is lost to a `#`.

@@ -41,25 +41,30 @@ A mutable working document that names the problem, holds the current theory,
 and lists runs. The story is the entry point to ongoing work.
 
 - Active stories live in `.edd/active/<slug>/story.yaml`
-- Parked (backlog / blocked) stories live in `.edd/parked/<slug>/story.yaml`
+- Parked stories live in `.edd/parked/<slug>/story.yaml`
 - Resolved stories live in `.edd/archived/<slug>/story.yaml`
 
 A story has:
 
 - **name** — human-readable title
-- **status** — one of `active`, `backlog`, `blocked`, `resolved`
+- **status** — one of `active`, `resolved`, `rejected`, `superseded`, `parked`
 - **problem** — what's wrong, in 1–3 sentences
 - **theory** — current hypothesis about *why*, and what fix to try
 - **refs** — loose association to branches, commits, docs
 - **fixture** — how to reproduce / test (a command, a file reference, or a
   description)
-- **runs** — append-only list of results, one line each
+- **runs** — append-only list of results, newest or oldest first but
+  consistently one or the other
 
 Common optional fields:
 
-- **priority** — `p0` (do now), `p1` (do next), `p2` (do soon), `p3` (backlog)
+- **priority** — `p0` immediate, `p1` what makes the product wrong or broken,
+  `p2` real and worth doing with nothing visibly broken, `p3` lowest.
+  **`p3` is not a parking space.** Say parked once, with `status`, or the day
+  comes when a story is parked by one signal and open by the other
 - **depends_on** — story that should resolve before this one starts
-- **blocked_by** — the immediate blocker while `status: blocked`
+- **blocked_by** — the immediate blocker. A blocked story's `status` stays
+  `active` or `parked`; blocking is a fact about the work, not a phase of it
 - **emerged_from** — the previous story that exposed this new failure mode
 - **continues** / **continued_by** — forward chain to the next story
 - **success_criteria** — measurable conditions for resolving the story
@@ -75,10 +80,25 @@ history.** (History lives in `runs`.)
 #### Canonical status meanings
 
 - `active` — open and intended for current / near-current execution.
-- `backlog` — valid work, but intentionally not open right now.
-- `blocked` — open only after the listed blocker resolves.
-- `resolved` — closed; no longer part of the open queue. After marking a story
-  `resolved`, move its whole directory to `.edd/archived/<slug>/`.
+- `resolved` — the work was done.
+- `rejected` — examined and deliberately NOT done. **This is why two terminal
+  words are not enough.** Work that was considered and declined is not
+  resolved, and calling it resolved claims work that never happened — in one
+  real archive, 23 of 425 closed stories are this.
+- `superseded` — the question moved to another story, which the body names.
+- `parked` — scheduled against nothing.
+
+`resolved`, `rejected` and `superseded` all move the whole story directory to
+`.edd/archived/<slug>/`; `parked` moves it to `.edd/parked/<slug>/`. The
+directory and the status say the same thing, and the validator checks that they
+agree.
+
+**Pick the vocabulary once and let nothing else in.** This list was four words
+for a while, with `backlog` and `blocked` among them and `rejected` missing.
+Nine synonyms accumulated — `closed`, `done`, `archived`, `merged` — because
+nothing refused them, and a quarter of one archive became invisible to
+`grep "status: resolved"`, which is how the next session reads recent history.
+A terminal value nothing greps for is a story nobody finds.
 
 Do **not** use `in_progress`, `stage-a-landed`, `completed`, or other custom
 workflow labels as `status`. Capture phase progress in fields like
@@ -86,19 +106,103 @@ workflow labels as `status`. Capture phase progress in fields like
 keeps the "what's open?" query trivial and stable.
 
 Keep `.edd/active` small — only stories an agent may reasonably pick up *now*.
-Move `backlog` and `blocked` stories to `.edd/parked`.
+Move parked stories to `.edd/parked`.
 
 ### Run
 
-A one-line entry in the story's `runs` list:
+An entry in the story's `runs` list: prose that opens with a date and says its
+finding in the first clause.
 
+```yaml
+runs:
+  - >
+    2026-03-04 THE PASSAGES WERE LAST IN THE PROMPT, not under-retrieved.
+    Moving them above the instruction block took invented facts from 1 in 4
+    questions to 1 in 30 with no prompt wording change, so H2 holds and H1 was
+    never the cause.
 ```
-- YYYY-MM-DDTHH:MM PASS|FAIL <id> # terse signal
+
+**Start with a one-liner if that is all the run earned, and do not formalise
+it.** One real archive began with a `PASS|FAIL <id>` template and ended up with
+it on 77 of 2434 entries: the shape came from fixture loops, where a run really
+is one artifact with a verdict, and most stories are not fixture loops. A
+verdict cannot carry what was measured, so the entries grew into prose and the
+documentation stayed where it was for months. If your runs are fixture verdicts,
+a verdict is the right entry. If they are findings, write the finding.
+
+Open with the date so the entry is self-dating, and put the finding first — the
+next reader scans openings, not bodies.
+
+**The one-line format discarded its own payload, which is the real reason it
+died.** In YAML a space-hash opens a comment:
+
+```yaml
+runs:
+  - 2026-01-02T14:10 FAIL throughline-set # 9/12 pages repeated an opener
 ```
+
+parses to exactly `"2026-01-02T14:10 FAIL throughline-set"`. The measurement
+after the hash reaches no parser, no `grep` over loaded YAML, and no agent that
+reads the story as a document — only a human looking at the raw file. So the
+template recorded the verdict and threw away the finding, silently, because the
+file parses and the text is right there on screen. In one archive, 59 entries
+across 17 stories lose 11,844 characters that way. A folded scalar keeps the
+hash as text.
+
+**Append at one end and keep to it.** Oldest-first is the easier default,
+because the newest entry lands where nothing can be damaged. In one archive 156
+stories ran oldest-first and 28 newest-first, so read a story's last two dates
+before you add to it rather than assuming.
 
 Runs are **append-only. Never edit or delete a run entry.** The run list *is*
 the regression history. A hypothesis that turned out wrong isn't a mistake to
-erase — it's a data point the next run builds on.
+erase — it's a data point the next run builds on. **If an old entry was wrong,
+append a correction that names the error.**
+
+#### Two ways an entry destroys its neighbour in silence
+
+Both are YAML facts rather than EDD rules, and both pass every gate that is not
+looking for them.
+
+**A prepend that reuses the next entry's marker.** Inserting text by replacing
+`runs:\n  - >-\n` gives the new entry that marker and turns the old one into
+its continuation lines. Two entries become one, the document still parses, and
+the entry count does not drop — so counting entries cannot detect it. Insert a
+**complete list item**, marker and all, or append at the end.
+
+**A colon-space in a plain scalar.** `": "` is YAML's mapping separator, and
+what it costs depends on where it sits:
+
+```yaml
+problem: the field is email: { template }   # FAILS to parse — "mapping values
+                                            # are not allowed here". Loud.
+runs:
+  - 2026-03-04 the locales kept: en and fr  # PARSES, as a mapping. The entry
+                                            # is a dict where every reader
+                                            # expects a string, and the run
+                                            # count is unchanged. Silent.
+  - >
+    2026-03-04 the locales kept: en and fr  # fine — a folded scalar is immune
+```
+
+A field value breaks noisily; a run entry breaks quietly, which is the one that
+survives. **Write runs as folded scalars** and it cannot happen. Formatters
+reflow what they cannot parse as though it were text, so neither case announces
+itself, and a sweep of one 452-story archive found 126 entries across 23
+stories whose prose had been cut at its first `": "` years earlier.
+
+Parse the file, and check the entries are strings — but only flag the exact
+shape, since a mapping run entry can be deliberate:
+
+```bash
+python3 -c "
+import re, sys, yaml
+d = yaml.safe_load(open(sys.argv[1]))
+print([i for i, r in enumerate(d['runs'])
+       if isinstance(r, dict) and len(r) == 1
+       and not re.fullmatch(r'\d{4}-\d{2}-\d{2}\S*', str(list(r)[0]))] or 'clean')
+" .edd/active/<slug>/story.yaml
+```
 
 ### Run detail file (optional)
 
@@ -249,16 +353,20 @@ To see what's open, sorted by priority:
 for f in .edd/active/*/story.yaml; do
   slug=$(basename "$(dirname "$f")")
   st=$(grep "^status:" "$f" | head -1 | sed 's/status: //')
-  pri=$(grep "^priority:" "$f" | head -1 | sed 's/priority: //' || echo "p3")
-  { [ "$st" = "active" ] || [ "$st" = "blocked" ]; } && echo "$pri  $st  $slug"
+  pri=$(grep "^priority:" "$f" | head -1 | sed 's/priority: //' || echo "p?")
+  [ "$st" = "active" ] && echo "$pri  $st  $slug"
 done | sort
 ```
 
-Backlog, resolved, and causal chains:
+An unprioritised story prints `p?` and sorts last, which is a question rather
+than a silent filing at the bottom.
+
+Parked, closed, and causal chains:
 
 ```bash
-grep -rl "status: backlog" .edd/parked/*/story.yaml     # backlog
-grep -rl "status: resolved" .edd/archived/*/story.yaml  # resolved
+grep -rl "status: parked" .edd/parked/*/story.yaml        # parked
+grep -rl "status: resolved" .edd/archived/*/story.yaml    # done
+grep -rl "status: rejected" .edd/archived/*/story.yaml    # deliberately not done
 grep -R "emerged_from" .edd/active .edd/parked .edd/archived  # trace a chain
 ```
 
@@ -270,9 +378,9 @@ grep -R "emerged_from" .edd/active .edd/parked .edd/archived  # trace a chain
     <slug>/
       story.yaml
       runs/               # optional immutable run detail files
-  parked/                 # backlog + blocked
+  parked/                 # scheduled against nothing
     <slug>/story.yaml
-  archived/               # resolved
+  archived/               # resolved, rejected, superseded
     <slug>/story.yaml
 ```
 
@@ -283,8 +391,11 @@ This repo ships:
 - **[`tools/story.md`](tools/story.md)** — a scaffold prompt for creating a new
   story (drop it in as a slash command / agent command).
 - **[`tools/edd-validate.py`](tools/edd-validate.py)** — a dependency-light
-  validator: checks required fields, canonical `status`, priority format, and
-  that `runs` is append-only YAML. Wire it into a pre-commit hook.
+  validator: every story parses, `status` is one of the five, the status agrees
+  with the directory, and — against git — **no run entry that existed at HEAD
+  stopped beginning an entry**, which is the only check that catches the
+  swallowed prepend above. It fails when it finds nothing to measure. Wire it
+  into a pre-commit hook.
 
 ## License
 

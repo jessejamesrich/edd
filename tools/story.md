@@ -28,7 +28,8 @@ Then ask the user the following, one at a time. Wait for each answer.
    command to run, or "need to create one.")
 4. **Give it a short slug.** (e.g. `chat-grounding-drift`, `copy-architecture`,
    `timeline-binding`.)
-5. **What priority?** (`p0` do now, `p1` do next, `p2` do soon, `p3` backlog.
+5. **What priority?** (`p0` do now, `p1` do next, `p2` do soon, `p3` lowest.
+   `p3` is not a parking space — parked is `status: parked`.
    Default `p2`.)
 6. **Any LLM model / thinking config to track?** (Optional — only for stories
    that investigate LLM behavior.)
@@ -73,7 +74,8 @@ runs: []
 5. Tell the user:
    - Story created at `.edd/active/<slug>/story.yaml`
    - The loop: observe → annotate → hypothesize → experiment → measure
-   - After each run, append a one-line entry to `runs:`
+   - After each run, append an entry to `runs:` — prose opening with a date,
+     at the end of the list, written as a folded scalar
    - Update `theory:` as understanding evolves
    - When a fix works but creates a new problem: resolve this story, start a new
      one with `emerged_from`.
