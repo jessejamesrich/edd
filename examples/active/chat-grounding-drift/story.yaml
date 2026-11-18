@@ -33,9 +33,11 @@ model_config:
   tasks:
     chat.answer: sonnet
 
-success_criteria: >
-  Contradiction-set grounding score ≥ 0.9 (baseline 0.74) with no regression on
-  the plain-QA set (currently 0.96).
+acceptance_criteria:
+  - must: contradiction-set grounding at or above 0.9, from a baseline of 0.74
+    check: evals/grounding/run.py evals/grounding/contradiction-set.jsonl
+  - must: no regression on the plain-QA set, currently 0.96
+    check: evals/grounding/run.py evals/grounding/plain-qa.jsonl
 
 runs:
   - >

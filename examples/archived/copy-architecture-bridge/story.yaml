@@ -35,9 +35,16 @@ fixture: |
   # 12 page briefs. Scored on: repeated-opener count (want 0), cross-section
   # references (want ≥ 3), and a holistic 1-5 "reads as one page" rating.
 
-success_criteria: >
-  Zero repeated openers, ≥ 3 cross-section references, holistic rating ≥ 4.0
-  across the throughline set.
+acceptance_criteria:
+  - must: zero repeated openers across the throughline set
+    check: evals/pages/run.py evals/pages/throughline-set.jsonl, repeated-opener count
+    met: the 2026-01-09 run, 0 of 12 briefs
+  - must: at least 3 cross-section references per page
+    check: same run, cross-section reference count
+    met: the 2026-01-09 run, 4.2 average
+  - must: holistic "reads as one page" rating at or above 4.0
+    check: same run, holistic 1-5 rating
+    met: the 2026-01-09 run, 4.3
 
 notes: >
   The planning pass is ~300 tokens and runs once per page — negligible cost next

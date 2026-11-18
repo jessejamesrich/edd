@@ -75,7 +75,8 @@ Common optional fields:
   `active` or `parked`; blocking is a fact about the work, not a phase of it
 - **emerged_from** — the previous story that exposed this new failure mode
 - **continues** / **continued_by** — forward chain to the next story
-- **success_criteria** — measurable conditions for resolving the story
+- **acceptance_criteria** — the conditions for closing, one per entry, each
+  with the thing that decides it. See *Acceptance criteria* below
 - **notes** — short current-truth context that doesn't belong in run history
 - **model_config** — for stories that investigate LLM behavior: record the
   task → model mapping and thinking level, so future runs compare against a
@@ -112,6 +113,49 @@ Do **not** use `in_progress`, `stage-a-landed`, `completed`, or other custom
 workflow labels as `status`. Capture phase progress in fields like
 `stage_status`, `tasks`, `runs`, or `notes`, and keep `status` canonical. This
 keeps the "what's open?" query trivial and stable.
+
+#### Acceptance criteria
+
+The story is mutable on purpose — the theory changes, the problem sharpens,
+refs accumulate. Acceptance criteria are the one part that must not, because
+they are what the story is judged against:
+
+```yaml
+acceptance_criteria:
+  - must: contradiction-set grounding at or above 0.9, from a baseline of 0.74
+    check: evals/grounding/run.py evals/grounding/contradiction-set.jsonl
+    met: the 2026-01-14 run, 0.91
+  - must: no regression on the plain-QA set, currently 0.96
+    check: evals/grounding/run.py evals/grounding/plain-qa.jsonl
+```
+
+**An array, not a paragraph.** Prose bundles conditions — "zero repeated
+openers, ≥ 3 cross-section references, rating ≥ 4.0" is three standards in one
+sentence, and a story meeting two of them reads as met at a glance. Separate
+entries can be satisfied separately, and the unsatisfied one stays visible.
+
+**Each criterion carries what decides it.** A `must` with no `check` is a
+wish: it reads like a standard and settles nothing, so the story closes on
+whoever is tired first. `met` cites the evidence rather than ticking a box —
+`met: true` and `met: the 2026-01-14 run, 0.91` cost the same to write and
+only one of them can be checked by the next reader.
+
+**The standard cannot move while the work is open.** This is the drift the
+rest of the format cannot see. A run entry that ages is visible, because it
+carries its date; a criterion reworded mid-story leaves no trace at all. The
+count stays level, every entry still has a `check`, and the diff is one line
+in a file nobody reads twice. The usual shape is narrowing rather than
+deletion — "every tenant's pages" becomes "the tenant we tested" — and the
+story then closes honestly against a standard it would have failed. So the
+validator compares criteria against HEAD on exact text, and a criterion that
+genuinely has to change is a NEW entry plus a run saying why the old one was
+wrong. Moving a goalpost is a finding about the work, not an edit.
+
+**Only `resolved` has to show its work.** `rejected` and `superseded` make no
+claim that the work happened, and `parked` is paused rather than finished, so
+the validator requires a `met` on every criterion for `resolved` alone. A
+story that cannot meet its criteria has two honest exits, and both are already
+in the vocabulary.
 
 Keep `.edd/active` small — only stories an agent may reasonably pick up *now*.
 Move parked stories to `.edd/parked`.
