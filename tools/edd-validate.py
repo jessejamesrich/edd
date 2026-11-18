@@ -5,7 +5,9 @@ Sweeps `.edd/**/story.yaml`, parses each with a safe loader, and checks the
 story schema: required fields, canonical `status`, priority format, acceptance
 criteria, and directory <-> status agreement. Against git it also checks the
 two things a schema cannot see — that `runs` is still append-only, and that no
-acceptance criterion has been reworded since HEAD.
+acceptance criterion has been reworded since HEAD. For a real project's
+`.edd/` it also checks that path-shaped `fixture` and `refs` entries still
+resolve.
 
 Exit code is non-zero if any file fails, or if there was nothing to measure --
 wire it into a pre-commit hook:
@@ -26,6 +28,7 @@ Requires PyYAML (`pip install pyyaml`).
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -176,6 +179,69 @@ def append_only_errors(path: Path, repo: Path, index: dict[str, str]) -> list[st
     return errors
 
 
+# A POINTER, NOT A WORD. `refs` holds branch names as readily as paths, and
+# `fix/issue-123` is not a missing file -- so a token counts as a path only
+# when it carries a directory separator AND a short extension. That excludes
+# branches, bare commit shas, prose, and numbers like 0.96, whose dot is
+# followed by a digit rather than a letter. A trailing `:218` is a line
+# reference and is stripped before the file is looked for.
+path_shaped = re.compile(r"^[^\s:]*/[^\s:]*\.[A-Za-z][A-Za-z0-9]{0,4}(:\d+)?$")
+
+
+def story_of(path: Path) -> dict:
+    """The parsed story, or an empty mapping. A parse failure is reported by
+    validate_story, so every check after it stays quiet rather than piling
+    noise onto one broken file."""
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (yaml.YAMLError, OSError):
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def pointer_errors(story: dict, path: Path, repo: Path | None) -> list[str]:
+    """A story whose fixture or refs have been deleted cannot be worked.
+
+    This is drift between the story and the tree, and nothing announces it:
+    the story still parses, still has a theory, still reads as current truth,
+    and the one thing it tells you to run is gone. The shape in the wild is a
+    doc pointing at `welcome-mcp/guide.ts:282` after the route was deleted --
+    a reference that was exact when written and is now a dead end.
+
+    Only paths are checked, and only against a real project's own repo, so
+    `refs: [fix/issue-123]` and a URL are left alone.
+    """
+    if repo is None:
+        return []
+
+    candidates: list[tuple[str, str]] = []
+    fixture = story.get("fixture")
+    if isinstance(fixture, str):
+        for token in fixture.split():
+            candidates.append(("fixture", token))
+    refs = story.get("refs")
+    if isinstance(refs, list):
+        for ref in refs:
+            if isinstance(ref, str):
+                candidates.extend(("refs", token) for token in ref.split())
+
+    errors: list[str] = []
+    seen: set[str] = set()
+    for field, token in candidates:
+        token = token.strip("\"'`,;()[]")
+        if not path_shaped.match(token) or token in seen:
+            continue
+        seen.add(token)
+        target = token.split(":")[0]
+        if not (repo / target).exists():
+            errors.append(
+                f"{field} points at {target}, which does not exist. A story "
+                "whose fixture or reference has been deleted cannot be worked "
+                "-- update the pointer, or say in a run that the thing is gone"
+            )
+    return errors
+
+
 def acceptance_errors(story: dict) -> list[str]:
     """Acceptance criteria are shaped so that closing is a CHECK, not a mood.
 
@@ -219,6 +285,24 @@ def acceptance_errors(story: dict) -> list[str]:
                 f"{where} needs a `check`: the command, file or query that decides "
                 "it. A criterion nothing can decide is a wish, not a criterion"
             )
+
+    # A CITATION THAT NAMES NOTHING. `met` is free text so that it can carry a
+    # number, but a date in it is a claim about this story's own history: a
+    # `met` naming a run the story does not have is decoration, and the usual
+    # cause is a date that drifted by a day while being typed from memory.
+    # A `met` with no date in it is left alone -- it may cite a commit or a
+    # person, and a check that cannot decide should not pretend to.
+    run_text = "\n".join(r for r in (story.get("runs") or []) if isinstance(r, str))
+    for i, item in enumerate(criteria, start=1):
+        if not isinstance(item, dict) or not isinstance(item.get("met"), str):
+            continue
+        for date in re.findall(r"\d{4}-\d{2}-\d{2}", item["met"]):
+            if date not in run_text:
+                errors.append(
+                    f"acceptance_criteria[{i}] says it was met by a {date} run, "
+                    "and no run entry carries that date. Cite a run the story "
+                    "actually holds"
+                )
 
     # THE CLOSURE GATE. `rejected` and `superseded` make no claim that the work
     # happened, and `parked` is paused rather than finished -- only `resolved`
@@ -382,12 +466,20 @@ def main() -> int:
     repo = repo_root(root)
     index = head_story_index(repo) if repo else {}
 
+    # POINTERS ARE CHECKED FOR REAL PROJECTS ONLY. This repo's stories live
+    # under examples/ and reference another project's tree -- `evals/...` is
+    # illustrative and is SUPPOSED not to resolve here. Checking it would make
+    # the reference repo fail on its own documentation, which teaches everyone
+    # who forks it to switch the check off. Under .edd/ the paths are real.
+    pointer_repo = repo if repo and base.name == ".edd" else None
+
     failures = 0
     for path in stories:
         errors = validate_story(path, base)
         if repo:
             errors += append_only_errors(path, repo, index)
             errors += acceptance_drift_errors(path, repo, index)
+            errors += pointer_errors(story_of(path), path, pointer_repo)
         rel = path.relative_to(root) if path.is_relative_to(root) else path
         if errors:
             failures += 1

@@ -114,6 +114,21 @@ workflow labels as `status`. Capture phase progress in fields like
 `stage_status`, `tasks`, `runs`, or `notes`, and keep `status` canonical. This
 keeps the "what's open?" query trivial and stable.
 
+#### Pointers rot quietly
+
+`fixture` and `refs` are how the next session reaches the work, and nothing
+announces it when they stop resolving. The story still parses, still has a
+theory, still reads as current truth, and the one thing it tells you to run is
+gone. The shape in the wild is a reference that was exact when written — a doc
+naming `welcome-mcp/guide.ts:282` after that route was deleted — so the
+validator resolves path-shaped `fixture` and `refs` entries against the repo.
+
+Only paths are checked, and only for a real project's `.edd/`. A token counts
+as a path when it carries a directory separator and a short extension, which
+leaves branch names like `fix/issue-123`, bare commit shas, URLs and numbers
+like `0.96` alone. A reference that is genuinely gone is a run entry saying so,
+not a silent deletion.
+
 #### Acceptance criteria
 
 The story is mutable on purpose — the theory changes, the problem sharpens,
@@ -150,6 +165,13 @@ story then closes honestly against a standard it would have failed. So the
 validator compares criteria against HEAD on exact text, and a criterion that
 genuinely has to change is a NEW entry plus a run saying why the old one was
 wrong. Moving a goalpost is a finding about the work, not an edit.
+
+**A `met` that names a date names a run.** `met` is free text so it can carry
+a number, but a date in it is a claim about this story's own history, and a
+`met` citing a run the story does not hold is decoration — usually a date
+typed from memory that landed a day off. A `met` with no date is left alone:
+it may cite a commit or a person, and a check that cannot decide should not
+pretend to.
 
 **Only `resolved` has to show its work.** `rejected` and `superseded` make no
 claim that the work happened, and `parked` is paused rather than finished, so
