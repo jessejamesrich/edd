@@ -1,6 +1,6 @@
 ---
 name: writing-an-edd-run
-description: Append a run to an EDD story, or close one. Use whenever you have finished a piece of work an active story covers, are about to write into .edd/, or are about to mark a story resolved, rejected, superseded or parked. Covers the run format, the three ways a run entry destroys its neighbour while every check stays green, what a run is allowed to assert, and the gate before a close.
+description: Append a run to an EDD story, or close one. Use whenever you have finished a piece of work an active story covers, are about to write into .edd/, or are about to mark a story resolved, rejected, superseded or parked. Covers the run format, the three ways a run entry destroys its neighbour while every check stays green, what a run is allowed to assert, how to sign off an acceptance criterion and record feedback, and the gate before a close.
 ---
 
 # Writing an EDD run
@@ -11,8 +11,8 @@ One rule, and everything here serves it:
 > measured.**
 
 The README is the methodology — what a story is, when to open one, the status
-vocabulary. This is the procedure for the two operations that happen most:
-adding a run, and closing a story. Drop this file in as a skill wherever your
+vocabulary. This is the procedure for the operations that happen
+most: adding a run, signing off a criterion, and closing a story. Drop this file in as a skill wherever your
 agent reads them.
 
 ## The format
@@ -142,6 +142,46 @@ the story exists.
 - **Record the instrument that lied.** The best runs in any EDD archive are
   about a probe that could not fail. They are worth more than the finding.
 
+## Signing off a criterion
+
+Work gets checked, and the result lands on the criterion rather than only in a
+run. Three fields carry it:
+
+```yaml
+acceptance_criteria:
+  - must: every claim-bearing sentence links to the passage it came from
+    check: open an answer in the console, click through each link
+    by: jesse
+    met: 2026-01-20, checked on six answers from the contradiction set
+    met_by: the agent built the panel, jesse checked it
+    feedback: >
+      The links work. Two problems: a sentence drawing on two passages shows
+      only the first, and the panel pushes the answer off-screen on a phone.
+```
+
+**`met` cites the evidence, not a tick.** `met: true` and `met: the 2026-01-20
+run, 0.91` cost the same to type and only one can be checked by the next
+reader. A date in `met` has to appear in a run entry, because a criterion
+citing a run the story does not hold is decoration.
+
+**`met_by` is who did the work, which is not who decided.** The ordinary case
+is an agent building and a person approving, and collapsing those loses which
+of the two to go back to. `met_by` without `met` is refused: naming who
+approved something reads as closed in every listing that greps for `met`.
+
+**REVIEW USUALLY PRODUCES MORE CRITERIA THAN IT CLOSES.** "The links work, but
+a sentence drawing on two passages shows only the first" is one criterion
+signed off and one discovered. Write the first as `met` with the comment in
+`feedback`, and the second as a NEW criterion. Do not fold the new finding into
+the old criterion's wording — that is the goalpost moving, and the validator
+refuses it on exact text.
+
+**Feedback is somebody's words.** The validator compares `feedback` against
+HEAD and refuses a rewrite. An agent handed "the excerpt should inherit from
+the body" can otherwise meet the criterion by softening the sentence that asked
+for it, and the card then closes against feedback nobody gave. A second round
+of review appends to what is there.
+
 ## Closing a story
 
 Five words, and the validator refuses a sixth: `active`, `resolved`,
@@ -150,9 +190,16 @@ Five words, and the validator refuses a sixth: `active`, `resolved`,
 resolution; `superseded` means the question moved to another story, which the
 body must name; `parked` means scheduled against nothing.
 
+**EVERY CRITERION NEEDS A `met` BEFORE `resolved`.** The validator refuses a
+resolved story with an unmet criterion, because `resolved` is the one word that
+claims the work was done. A story that cannot meet its criteria has two honest
+exits and both are already in the vocabulary: `rejected` if it was examined and
+declined, `superseded` if the question moved. Neither claims the work happened,
+and neither needs the criteria met.
+
 A close is three things in one commit:
 
-1. Set `status:`.
+1. Set `status:`, and `met` on every criterion if the status is `resolved`.
 2. Append the run that closes it — what was done, and the measurement that says
    so.
 3. **Move the directory.** `resolved`, `rejected` and `superseded` go to

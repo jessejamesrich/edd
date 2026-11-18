@@ -39,7 +39,11 @@ except ImportError:
     sys.stderr.write("edd-validate: PyYAML is required (pip install pyyaml)\n")
     sys.exit(2)
 
-required_fields = ("name", "status", "problem", "theory", "refs", "fixture", "runs")
+# THEORY IS NOT REQUIRED. A story that opens as "this is what we need to do"
+# has no hypothesis to state, and demanding one gets a restatement of the
+# problem in the theory field, which teaches the next reader to skip both.
+# A story diagnosing something unknown still wants it, and says so itself.
+required_fields = ("name", "status", "problem", "refs", "fixture", "runs")
 
 # FIVE WORDS, AND NOTHING ELSE. Two terminal words are not enough: work that
 # was examined and declined is `rejected`, not `resolved`, and calling it
@@ -282,8 +286,32 @@ def acceptance_errors(story: dict) -> list[str]:
         check = item.get("check")
         if not isinstance(check, str) or not check.strip():
             errors.append(
-                f"{where} needs a `check`: the command, file or query that decides "
-                "it. A criterion nothing can decide is a wish, not a criterion"
+                f"{where} needs a `check`: the command, file, query or person that "
+                "decides it. A criterion nothing can decide is a wish, not a "
+                "criterion"
+            )
+
+        # `by` IS WHO DECIDES, NOT WHO BUILT IT. A card waiting on a person
+        # and a card waiting on a runner are different kinds of open, and the
+        # difference is worth a grep. `met_by` is who did the work, which is a
+        # separate fact: the usual case is one agent building and one person
+        # approving, and collapsing them loses which of the two to ask.
+        for field in ("by", "met_by", "feedback"):
+            value = item.get(field)
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                errors.append(
+                    f"{where} has an empty `{field}` -- give it a value or "
+                    "leave the field out"
+                )
+
+        # FEEDBACK WITHOUT A SIGN-OFF IS THE NORMAL STATE. Someone looked and
+        # said something, and the work is not done. But `met_by` with no `met`
+        # claims the work was approved by naming who approved it, which reads
+        # as closed in every listing that greps for met.
+        if item.get("met_by") and not item.get("met"):
+            errors.append(
+                f"{where} names `met_by` with no `met`. Say what proved it, or "
+                "move the note to `feedback` until it is signed off"
             )
 
     # A CITATION THAT NAMES NOTHING. `met` is free text so that it can carry a
@@ -356,25 +384,41 @@ def acceptance_drift_errors(
     except yaml.YAMLError:
         return []  # the parse error is reported by validate_story
 
-    musts = lambda doc: [
-        item["must"].strip()
-        for item in (
-            (doc or {}).get("acceptance_criteria") or []
-            if isinstance(doc, dict)
-            else []
-        )
-        if isinstance(item, dict) and isinstance(item.get("must"), str)
-    ]
+    def criteria_of(doc: object) -> dict[str, str]:
+        """must -> feedback, for the criteria in a parsed story."""
+        items = (doc or {}).get("acceptance_criteria") or [] if isinstance(doc, dict) else []
+        out: dict[str, str] = {}
+        for item in items:
+            if isinstance(item, dict) and isinstance(item.get("must"), str):
+                feedback = item.get("feedback")
+                out[item["must"].strip()] = (
+                    feedback.strip() if isinstance(feedback, str) else ""
+                )
+        return out
 
-    now = set(musts(after))
+    before_criteria = criteria_of(before)
+    after_criteria = criteria_of(after)
+
     errors: list[str] = []
-    for text in musts(before):
-        if text not in now:
+    for text, feedback in before_criteria.items():
+        if text not in after_criteria:
             errors.append(
                 f'an acceptance criterion MOVED -- "{text[:60]}..." was a '
                 "criterion at HEAD and is not one now. Criteria are the "
                 "standard the story is judged against; add a new one and say "
                 "in a run why the old one was wrong, rather than editing it"
+            )
+            continue
+        # FEEDBACK IS SOMEBODY'S WORDS, AND REWRITING THEM ERASES THE
+        # CORRECTION. An agent handed "the excerpt should inherit from the
+        # body" can satisfy the criterion by softening the sentence that asked
+        # for it, and the card then closes against feedback nobody gave. Added
+        # text is fine: a second round of review appends.
+        if feedback and feedback not in after_criteria[text]:
+            errors.append(
+                f'feedback was REWRITTEN on "{text[:48]}..." -- what was said '
+                "at HEAD is no longer there. Feedback is somebody's words; add "
+                "the next round after it rather than editing it"
             )
     return errors
 

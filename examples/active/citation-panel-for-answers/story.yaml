@@ -1,0 +1,58 @@
+name: A reader can check an answer without leaving it
+status: active
+priority: p2
+created: 2026-01-18
+
+# No theory. This card opens as work to do rather than a question about why
+# something behaves the way it does, and a hypothesis here would be the
+# problem statement written twice.
+
+problem: >
+  An answer cites its sources in prose and the reader has to take it on faith.
+  The retrieved passages are already on the response and nothing shows them, so
+  checking an answer means asking a second question about where it came from.
+
+refs:
+  - packages/chat/src/answer.ts
+  - fix/citation-panel
+
+fixture: |
+  Open any answer in the console and look for the passages behind it.
+  evals/grounding/run.py prints the passage ids the answer was built from.
+
+acceptance_criteria:
+  - must: every claim-bearing sentence links to the passage it came from
+    check: open an answer in the console, click through each link
+    by: jesse
+    met: 2026-01-20, checked on six answers from the contradiction set
+    met_by: the agent built the panel, jesse checked it
+    feedback: >
+      The links work. Two problems: a sentence drawing on two passages shows
+      only the first, and the panel pushes the answer off-screen on a phone.
+  - must: a sentence drawing on several passages links to all of them
+    check: open an answer in the console, click through each link
+    by: jesse
+    feedback: >
+      Raised on 2026-01-20 reviewing the first build. Not a regression, it was
+      never built.
+  - must: the panel does not push the answer off-screen below 420px
+    check: evals/ui/viewports.py --min-width 320
+    by: ci
+  - must: no regression on the plain-QA set, currently 0.96
+    check: evals/grounding/run.py evals/grounding/plain-qa.jsonl
+    by: ci
+
+runs:
+  - >-
+    2026-01-18 OPENED AS A CARD, NOT A QUESTION. The passages are already on
+    the response object, so this is display work rather than retrieval work.
+    Scoped to the console answer view; the API already returns what is needed
+    and no schema change is in this card.
+  - >-
+    2026-01-20 FIRST BUILD CHECKED BY A HUMAN AND TWO CRITERIA CAME BACK. The
+    panel renders and the links resolve, so the first criterion is signed off
+    against six answers. Jesse found a multi-passage sentence showing one link
+    and the panel pushing the answer off-screen on a phone, and both are now
+    criteria of their own rather than notes on the first. The second was never
+    built and the third is a real defect, which is why neither is a run
+    annotation.

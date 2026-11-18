@@ -1,11 +1,13 @@
 # Evaluation-Driven Development (EDD)
 
-A lightweight methodology for building **non-deterministic systems** — AI
-generation, retrieval, agents, classifiers — where "quality" is a spectrum, not
-a boolean. Based on the scientific method: **observe, annotate, hypothesize,
-experiment, measure.**
+A lightweight methodology for **work whose shape isn't settled when you start
+it** — AI generation, retrieval, agents and classifiers, where "quality" is a
+spectrum rather than a boolean, and equally the build where nobody yet agrees
+what done means. One story is one unit of work: the card you open when you say
+"here is what we need to do", carrying the conditions for calling it finished
+and the record of every attempt.
 
-EDD is **context as files.** Every investigation lives as a small YAML document
+EDD is **context as files.** Every piece of work lives as a small YAML document
 in your repo, versioned alongside the code. The primary reader isn't a
 dashboard — it's the **next agent (or human) to pick up the work.** They read
 the story and know exactly where things stand without digging through hundreds
@@ -36,17 +38,26 @@ wrong question. The right questions are **how good, why, and what changed since
 last time?** A green checkmark can't hold a hypothesis, a run history, or the
 reason you tried the thing you tried.
 
-EDD gives that state a home: a mutable **story** that names the problem, holds
-the current theory, and accumulates an append-only list of **runs**. It's
-deliberately low-ceremony — plain YAML, plain directories, greppable, no
+EDD gives that state a home: a mutable **story** that names the work, holds the
+conditions for finishing it, and accumulates an append-only list of **runs**.
+It's deliberately low-ceremony — plain YAML, plain directories, greppable, no
 service to stand up.
+
+The same shape turned out to fit work that is not a tuning problem at all.
+Building infrastructure nobody has specified, settling what a word in your
+domain means, getting a listing out of a web form and into the repo: in each
+one the question "is it done?" has an answer somebody has to decide, and the
+reason you tried what you tried is worth keeping. A story is a card you can
+hand to the next session, so this repo's stories are cards more often than they
+are investigations.
 
 ## Concepts
 
 ### Story
 
-A mutable working document that names the problem, holds the current theory,
-and lists runs. The story is the entry point to ongoing work.
+A mutable working document that names the work, holds the conditions for
+calling it finished, and lists runs. The story is the entry point to ongoing
+work, and the unit you open when you decide to do something.
 
 - Active stories live in `.edd/active/<slug>/story.yaml`
 - Parked stories live in `.edd/parked/<slug>/story.yaml`
@@ -56,8 +67,9 @@ A story has:
 
 - **name** — human-readable title
 - **status** — one of `active`, `resolved`, `rejected`, `superseded`, `parked`
-- **problem** — what's wrong, in 1–3 sentences
-- **theory** — current hypothesis about *why*, and what fix to try
+- **problem** — what isn't settled, in 1–3 sentences. A defect, or the work
+  itself: "the new-post page is a tab bar with nothing in it" is as good a
+  problem as a 500
 - **refs** — loose association to branches, commits, docs
 - **fixture** — how to reproduce / test (a command, a file reference, or a
   description)
@@ -70,6 +82,9 @@ Common optional fields:
   `p2` real and worth doing with nothing visibly broken, `p3` lowest.
   **`p3` is not a parking space.** Say parked once, with `status`, or the day
   comes when a story is parked by one signal and open by the other
+- **theory** — hypothesis about *why*, and what fix to try. Wanted whenever the
+  cause is unknown, and left out of a card that opens as work to do rather than
+  a question, where a theory is the problem statement written twice
 - **depends_on** — story that should resolve before this one starts
 - **blocked_by** — the immediate blocker. A blocked story's `status` stays
   `active` or `parked`; blocking is a fact about the work, not a phase of it
@@ -139,15 +154,49 @@ they are what the story is judged against:
 acceptance_criteria:
   - must: contradiction-set grounding at or above 0.9, from a baseline of 0.74
     check: evals/grounding/run.py evals/grounding/contradiction-set.jsonl
+    by: ci
     met: the 2026-01-14 run, 0.91
+  - must: every claim-bearing sentence links to the passage it came from
+    check: open an answer in the console, click through each link
+    by: jesse
+    met: 2026-01-20, checked on six answers
+    met_by: the agent built the panel, jesse checked it
+    feedback: >
+      The links work. A sentence drawing on two passages shows only the first.
   - must: no regression on the plain-QA set, currently 0.96
     check: evals/grounding/run.py evals/grounding/plain-qa.jsonl
+    by: ci
 ```
 
 **An array, not a paragraph.** Prose bundles conditions — "zero repeated
 openers, ≥ 3 cross-section references, rating ≥ 4.0" is three standards in one
 sentence, and a story meeting two of them reads as met at a glance. Separate
 entries can be satisfied separately, and the unsatisfied one stays visible.
+
+**A check is a person as often as a command.** Plenty of work is finished when
+somebody looks at it and says so, and no runner reports on whether a palette
+reads as one system. `check` is free text for that reason: "open the builder and
+compare against the spec" is a check. What matters is that it names something
+that can actually settle the question.
+
+**`by` is who decides, `met_by` is who did the work.** A card waiting on a
+person and a card waiting on CI are different kinds of open, and the difference
+is worth a grep when you are deciding what to pick up. They are also separate
+facts: the ordinary case is an agent building and a person approving, and
+collapsing them loses which of the two to go back to. `met_by` without `met`
+is refused, because naming who approved something reads as closed in every
+listing that greps for `met`.
+
+**Feedback belongs on the criterion, and it is somebody's words.** Review
+rarely arrives as a verdict. It arrives as "the links work, but a sentence
+drawing on two passages shows only the first", which is one criterion signed
+off and one more discovered. Write the first as `met` with the comment in
+`feedback`, and the second as a new criterion rather than a note on the old
+one. The validator compares `feedback` against HEAD and refuses a rewrite: an
+agent handed "the excerpt should inherit from the body" can otherwise satisfy
+the criterion by softening the sentence that asked for it, and the card then
+closes against feedback nobody gave. Adding a later round is fine, since that
+appends.
 
 **Each criterion carries what decides it.** A `must` with no `check` is a
 wish: it reads like a standard and settles nothing, so the story closes on
@@ -355,13 +404,14 @@ promote it to a story.
 
 ## The loop
 
-1. **Create a story** when you start investigating a problem.
+1. **Open a story** when work starts that outlives this session, and write
+   the acceptance criteria before the work rather than after.
 2. **Run the fixture** — whatever reproduces the behavior (a script, an eval, a
    manual call).
 3. **Observe** — read the output, scores, logs.
 4. **Annotate** — what failed, and where? Add a run line to the story.
-5. **Hypothesize** — update the `theory`. What's wrong, and what layer owns the
-   fix?
+5. **Hypothesize** — update the `theory`, on a story that has one. What's
+   wrong, and what layer owns the fix?
 6. **Experiment** — make the code / prompt change.
 7. **Measure** — run the fixture again. Add another run line.
 8. **Repeat** until the story reaches `status: resolved`.
@@ -404,20 +454,29 @@ commit, the discipline broke.
 **Good fit:**
 
 - AI / ML system tuning — generation, retrieval, agents, classifiers, embeddings
-- Non-deterministic output that needs iterative quality improvement
-- Problems where the diagnosis isn't obvious upfront and the fix is a hypothesis
+- Work where nobody has yet agreed what finished means, so settling the criteria
+  is part of the job
+- Anything that outlives one session, where the next agent or person needs the
+  thread rather than the scrollback
+- A build whose verification is somebody looking at it, which no test reports on
 
 **Not needed:**
 
-- Deterministic bugs (wrong bucket → fix → test → done)
-- CRUD routes, UI components, infrastructure
-- Anything where a unit test is the complete verification
+- Work you finish in one sitting where a passing test is the whole of "done"
+- A bug with an obvious cause: fix it, test it, move on
+
+The boundary is not the subsystem. An earlier version of this list named CRUD
+routes, UI components and infrastructure as out of scope, and then the stories
+that most needed a card were an infrastructure-as-code migration, an App Store
+listing and the definition of the word "block". What decides it is whether
+"finished" has an answer somebody has to make, and whether anyone has to pick
+the work up again later.
 
 EDD **sits above** your existing design docs, specs, and prompts — it doesn't
-replace them. A story says "we're investigating X" and points at the relevant
-contract / prompt / code. Those artifacts stay the source of truth for *how the
-system works*; stories track *what we're trying to change and whether it's
-working.*
+replace them. A story names the work and points at the relevant contract /
+prompt / code. Those artifacts stay the source of truth for *how the system
+works*; stories track *what we're changing, what would make it done, and
+whether it is.*
 
 ## Finding active work
 
@@ -460,8 +519,8 @@ grep -R "emerged_from" .edd/active .edd/parked .edd/archived  # trace a chain
 
 This repo ships:
 
-- **[`examples/`](examples/)** — 21 synthetic stories, enough to show the whole
-  vocabulary in use rather than one of each. Six active, two parked, thirteen
+- **[`examples/`](examples/)** — 22 synthetic stories, enough to show the whole
+  vocabulary in use rather than one of each. Seven active, two parked, thirteen
   closed: ten `resolved`, two `rejected` (work examined and deliberately not
   done, which is the word most archives are missing), and one `superseded`
   whose body names where the question went. Two causal chains run end to end —
@@ -471,8 +530,11 @@ This repo ships:
   `port-the-pipeline-to-typescript` is a six-phase story whose runs are
   execution steps naming the commit that landed each one.
   `a-cache-key-ignores-the-locale` carries a run detail file.
-  `classifier-drifts-after-retraining` carries `model_config`. None of them is
-  real; the problems are the ordinary ones.
+  `classifier-drifts-after-retraining` carries `model_config`.
+  `citation-panel-for-answers` is a card rather than an investigation: no
+  theory, criteria split between `ci` and a person, one signed off with the
+  feedback that produced the next two. None of them is real; the problems are
+  the ordinary ones.
 - **[`tools/story.md`](tools/story.md)** — a scaffold prompt for creating a new
   story (drop it in as a slash command / agent command).
 - **[`skills/writing-an-edd-run/`](skills/writing-an-edd-run/)** — the
@@ -480,12 +542,20 @@ This repo ships:
   closing a story, as a skill an agent loads when it needs it. The README tells
   you what a run is; this tells you how to write one without destroying the one
   below it. Drop it in wherever your agent reads skills.
+- **[`skills/opening-an-edd/`](skills/opening-an-edd/)** — the procedure for
+  the operation that starts everything: what belongs on a card that is not an
+  investigation, how to write an acceptance criterion that can settle the
+  question, and the four ways a criterion is born unable to fail.
 - **[`tools/edd-validate.py`](tools/edd-validate.py)** — a dependency-light
   validator: every story parses, `status` is one of the five, the status agrees
-  with the directory, and — against git — **no run entry that existed at HEAD
-  stopped beginning an entry**, which is the only check that catches the
-  swallowed prepend above. It fails when it finds nothing to measure. Wire it
-  into a pre-commit hook.
+  with the directory, every acceptance criterion carries something that decides
+  it, `resolved` has a `met` on each one, and — against git — **no run entry
+  that existed at HEAD stopped beginning an entry**, which is the only check
+  that catches the swallowed prepend above, plus **no criterion or piece of
+  feedback reworded since HEAD**, which is the only check that catches a
+  goalpost moving. For a real project's `.edd/` it also resolves path-shaped
+  `fixture` and `refs` entries. It fails when it finds nothing to measure. Wire
+  it into a pre-commit hook.
 
 ## License
 
